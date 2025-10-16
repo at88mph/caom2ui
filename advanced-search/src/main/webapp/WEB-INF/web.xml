@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+************************************************************************
+*******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
+**************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
+*
+*  (c) 2016.                            (c) 2016.
+*  Government of Canada                 Gouvernement du Canada
+*  National Research Council            Conseil national de recherches
+*  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
+*  All rights reserved                  Tous droits réservés
+*
+*  NRC disclaims any warranties,        Le CNRC dénie toute garantie
+*  expressed, implied, or               énoncée, implicite ou légale,
+*  statutory, of any kind with          de quelque nature que ce
+*  respect to the software,             soit, concernant le logiciel,
+*  including without limitation         y compris sans restriction
+*  any warranty of merchantability      toute garantie de valeur
+*  or fitness for a particular          marchande ou de pertinence
+*  purpose. NRC shall not be            pour un usage particulier.
+*  liable in any event for any          Le CNRC ne pourra en aucun cas
+*  damages, whether direct or           être tenu responsable de tout
+*  indirect, special or general,        dommage, direct ou indirect,
+*  consequential or incidental,         particulier ou général,
+*  arising from the use of the          accessoire ou fortuit, résultant
+*  software.  Neither the name          de l'utilisation du logiciel. Ni
+*  of the National Research             le nom du Conseil National de
+*  Council of Canada nor the            Recherches du Canada ni les noms
+*  names of its contributors may        de ses  participants ne peuvent
+*  be used to endorse or promote        être utilisés pour approuver ou
+*  products derived from this           promouvoir les produits dérivés
+*  software without specific prior      de ce logiciel sans autorisation
+*  written permission.                  préalable et particulière
+*                                       par écrit.
+*
+************************************************************************
+-->
+
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+                             http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+         id="AdvancedSearch" version="3.1">
+    <display-name xml:lang="en">AdvancedSearch</display-name>
+    <filter>
+        <filter-name>WebAccessControlFilter</filter-name>
+        <filter-class>ca.nrc.cadc.web.WebAccessControlFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>WebAccessControlFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!--
+      To make sure the logging level gets set before any
+      logging gets done, set load-on-startup to a smaller
+      whole number than is used for any other servlet
+      in this webapp.  This assumes Tomcat 5.5 or later.
+    -->
+    <servlet>
+        <servlet-name>logControl</servlet-name>
+        <servlet-class>ca.nrc.cadc.log.LogControlServlet</servlet-class>
+        <init-param>
+            <param-name>logLevel</param-name>
+            <param-value>info</param-value>
+        </init-param>
+        <init-param>
+            <param-name>logLevelPackages</param-name>
+            <param-value>
+                ca.nrc.cadc.uws
+                ca.nrc.cadc.tap
+                ca.nrc.cadc.vosi
+                ca.nrc.cadc.search
+                ca.nrc.cadc.caom2
+                ca.nrc.cadc.web
+            </param-value>
+        </init-param>
+        <init-param>
+            <param-name>logAccessGroup</param-name>
+            <param-value>ivo://cadc.nrc.ca/gms?CADC</param-value>
+        </init-param>
+        <init-param>
+            <param-name>groupAuthorizer</param-name>
+            <param-value>ca.nrc.cadc.ac.client.GroupAuthorizer</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+
+    </servlet>
+
+    <!--
+      Each of the Restlet servlets need to have their respective Restlet
+      attributes set properly.
+    -->
+    <!-- AdvancedSearch Servlet -->
+    <servlet>
+        <servlet-name>SearchJobServlet</servlet-name>
+        <servlet-class>ca.nrc.cadc.uws.server.JobServlet</servlet-class>
+        <init-param>
+            <param-name>post</param-name>
+            <param-value>ca.nrc.cadc.uws.web.SyncPostAction</param-value>
+        </init-param>
+        <init-param>
+            <param-name>get</param-name>
+            <param-value>ca.nrc.cadc.uws.web.SyncGetAction</param-value>
+        </init-param>
+        <init-param>
+            <param-name>ca.nrc.cadc.uws.server.JobManager</param-name>
+            <param-value>ca.nrc.cadc.uws.SearchJobManager</param-value>
+        </init-param>
+        <init-param>
+            <param-name>ca.nrc.cadc.rest.InlineContentHandler</param-name>
+            <param-value>ca.nrc.cadc.uws.SearchInlineContentHandler</param-value>
+        </init-param>
+        <load-on-startup>2</load-on-startup>
+    </servlet>
+
+    <servlet>
+        <servlet-name>HiPSImageSurveyServlet</servlet-name>
+        <servlet-class>ca.nrc.cadc.search.HiPSImageSurveyServlet</servlet-class>
+        <load-on-startup>2</load-on-startup>
+    </servlet>
+
+    <servlet>
+        <description>Servlet to convert units and return the search value.</description>
+        <servlet-name>UnitConversionServlet</servlet-name>
+        <servlet-class>ca.nrc.cadc.search.UnitConversionServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <!-- Preview Servlet -->
+    <servlet>
+        <servlet-name>PreviewServlet</servlet-name>
+        <servlet-class>ca.nrc.cadc.search.PreviewServlet</servlet-class>
+        <load-on-startup>4</load-on-startup>
+    </servlet>
+
+    <!-- DataLink Servlet -->
+    <servlet>
+        <servlet-name>DataLinkServlet</servlet-name>
+        <servlet-class>ca.nrc.cadc.search.SearchPreviewServlet</servlet-class>
+        <load-on-startup>4</load-on-startup>
+    </servlet>
+
+    <!-- Column Unit handling Servlet -->
+    <servlet>
+        <servlet-name>ColumnUnitServlet</servlet-name>
+        <servlet-class>ca.nrc.cadc.search.ColumnUnitServlet</servlet-class>
+        <load-on-startup>4</load-on-startup>
+    </servlet>
+
+    <servlet>
+        <servlet-name>PackageServiceServlet</servlet-name>
+        <servlet-class>ca.nrc.cadc.search.PackageServlet</servlet-class>
+    </servlet>
+
+    <!-- Form Validation Servlet -->
+    <servlet>
+        <servlet-name>FormValidationServlet</servlet-name>
+        <servlet-class>ca.nrc.cadc.search.FormValidationServlet</servlet-class>
+        <load-on-startup>4</load-on-startup>
+    </servlet>
+
+    <servlet>
+        <servlet-name>ServiceLocatorServlet</servlet-name>
+        <servlet-class>ca.nrc.cadc.search.CookieServiceLocatorServlet</servlet-class>
+        <load-on-startup>4</load-on-startup>
+    </servlet>
+
+    <!-- URL-to-servlet mapping -->
+
+    <servlet-mapping>
+        <servlet-name>logControl</servlet-name>
+        <url-pattern>/logControl</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>PreviewServlet</servlet-name>
+        <url-pattern>/preview/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>DataLinkServlet</servlet-name>
+        <url-pattern>/datalink/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>ColumnUnitServlet</servlet-name>
+        <url-pattern>/columnUnit</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>PackageServiceServlet</servlet-name>
+        <url-pattern>/package</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>SearchJobServlet</servlet-name>
+        <url-pattern>/find/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>SearchJobServlet</servlet-name>
+        <url-pattern>/find</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>HiPSImageSurveyServlet</servlet-name>
+        <url-pattern>/survey-images/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>UnitConversionServlet</servlet-name>
+        <url-pattern>/unitconversion/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>FormValidationServlet</servlet-name>
+        <url-pattern>/validate/*</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>ServiceLocatorServlet</servlet-name>
+        <url-pattern>/service-locator</url-pattern>
+    </servlet-mapping>
+</web-app>

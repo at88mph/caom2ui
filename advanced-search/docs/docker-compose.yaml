@@ -1,0 +1,118 @@
+services:
+  proxy:
+    image: traefik:v3.4
+    hostname: ${PROXY_HOSTNAME}
+    ports:
+      - "80:80"
+      - "443:443"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/configuration/"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+    volumes:
+      - "server_certs:/server_certs:ro"
+      - "proxy_config:/configuration:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    depends_on:
+      - "jekyll"
+      - "access"
+      - "advancedsearch"
+    networks:
+      - "dev"
+
+  jekyll:
+    image: bucket.canfar.net/cadc-ccda:SNAPSHOT
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.jekyll.loadbalancer.server.port=4000"
+      - "traefik.http.routers.jekyll.rule=(Host(`${PROXY_HOSTNAME}`) && PathPrefix(`/`))"
+      - "traefik.http.routers.jekyll.entrypoints=websecure"
+      - "traefik.http.routers.jekyll.tls=true"
+      - "traefik.http.routers.jekyll.service=jekyll"
+      - "traefik.http.routers.jekyll.tls.domains[0].main=cadc.dao.nrc.ca"
+      - "traefik.http.routers.jekyll.tls.domains[0].sans=*.cadc.dao.nrc.ca"
+    volumes:
+      - "./:/srv/jekyll"
+    networks:
+      - "dev"
+
+  access:
+    image: bucket.canfar.net/access:1.0.0-20250528T215654
+    networks:
+      - "dev"
+    ports:
+      - "30004:5555"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.access.loadbalancer.server.port=8080"
+      - "traefik.http.routers.access.rule=(Host(`${PROXY_HOSTNAME}`) && PathPrefix(`/access`))"
+      - "traefik.http.routers.access.service=access"
+      - "traefik.http.routers.access.entrypoints=websecure"
+      - "traefik.http.routers.access.tls=true"
+      - "traefik.http.routers.access.tls.domains[0].main=cadc.dao.nrc.ca"
+      - "traefik.http.routers.access.tls.domains[0].sans=*.cadc.dao.nrc.ca"
+    volumes:
+      - "access_config:/config"
+      - "ca_certs:/config/cacerts:ro"
+    environment:
+      CATALINA_OPTS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:5555 -Dca.nrc.cadc.auth.IdentityManager=ca.nrc.cadc.ac.ACIdentityManager -Djava.security.egd=file:/dev/./urandom -Dmail.smtp.host=smtp.nrc.ca -Dtomcat.connector.secure=true -Dtomcat.connector.scheme=https -Dtomcat.connector.proxyName=${PROXY_HOSTNAME} -Dtomcat.connector.proxyPort=443"
+
+  advancedsearch:
+    image: bucket.canfar.net/advanced-search:2.1.0-20250425T165912
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.advancedsearch.loadbalancer.server.port=8080"
+      - "traefik.http.routers.advancedsearch.rule=(Host(`${PROXY_HOSTNAME}`) && PathPrefix(`/AdvancedSearch`))"
+      - "traefik.http.routers.advancedsearch.service=advancedsearch"
+      - "traefik.http.routers.advancedsearch.entrypoints=websecure"
+      - "traefik.http.routers.advancedsearch.tls=true"
+      - "traefik.http.routers.advancedsearch.tls.domains[0].main=cadc.dao.nrc.ca"
+      - "traefik.http.routers.advancedsearch.tls.domains[0].sans=*.cadc.dao.nrc.ca"
+    ports:
+      - "30002:5555"
+    depends_on:
+      aspg:
+        condition: service_healthy
+    volumes:
+      - "advancedsearch_config:/config:ro"
+    environment:
+      CATALINA_OPTS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:5555 -Djava.security.egd=file:/dev/./urandom -Dadvancedsearch.uws.maxActive=5 -Dadvancedsearch.uws.username=asuws -Dadvancedsearch.uws.password=asuwspw -Dadvancedsearch.uws.url=jdbc:postgresql://aspg/uws -Dtomcat.connector.secure=true -Dtomcat.connector.scheme=https -Dtomcat.connector.proxyName=${PROXY_HOSTNAME} -Dtomcat.connector.proxyPort=443 -Dca.nrc.cadc.auth.IdentityManager=ca.nrc.cadc.auth.ACIdentityManager"
+    networks:
+      - "dev"
+
+  aspg:
+    image: bucket.canfar.net/uws:postgresql-15
+    networks:
+      - "dev"
+    environment:
+      POSTGRES_USER: "asuws"
+      POSTGRES_PASSWORD: "asuwspw"
+      POSTGRES_DB: "uws"
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U asuws -d uws'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+networks:
+  dev:
+    external: true
+
+volumes:
+  server_certs:
+    external: true
+  ca_certs:
+    external: true
+  proxy_config:
+    external: true
+  access_config:
+    external: true
+  advancedsearch_config:
+    external: true
