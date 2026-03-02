@@ -19,7 +19,7 @@ dependencies {
     implementation 'org.opencadc:caom2:[2.4.9, 2.5.0)'
 
     providedCompile 'javax.servlet:javax.servlet-api:[3.1.0,)'
-    
+
     runtimeOnly 'javax.servlet.jsp.jstl:javax.servlet.jsp.jstl-api:1.2.2'
     runtimeOnly 'org.apache.taglibs:taglibs-standard-impl:1.2.5'
     runtimeOnly 'org.opencadc:cadc-access-control:[1.1,2.0)'
