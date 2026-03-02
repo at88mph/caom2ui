@@ -35,6 +35,21 @@ java {
     targetCompatibility = JavaVersion.VERSION_11
 }
 
+testing {
+    suites {
+        intTest(JvmTestSuite) {
+            // Configure dependencies for this test suite if needed
+            dependencies {
+                implementation project()
+                // add any other dependencies, e.g., JUnit Jupiter
+                implementation 'org.opencadc:cadc-util:[1.12.14,2.0)'
+                implementation 'org.jsoup:jsoup:[1.22.1,2.0)'
+                useJUnitJupiter()
+            }
+        }
+    }
+}
+
 def git_url = 'https://github.com/opencadc/caom2ui'
 
 war {

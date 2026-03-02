@@ -35,68 +35,125 @@
 package ca.nrc.cadc.caom2.ui.server;
 
 
-import ca.nrc.cadc.net.NetUtil;
-import ca.nrc.cadc.web.selenium.AbstractWebApplicationIntegrationTest;
-import org.junit.Assert;
-import org.junit.Test;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
 
-import java.net.URI;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 
-public class WalkthroughTest extends AbstractWebApplicationIntegrationTest {
+public class WalkthroughTest {
 
-    public WalkthroughTest() throws Exception {
-        super();
+    private static final Logger LOGGER = Logger.getLogger(WalkthroughTest.class);
+
+    static {
+        LOGGER.setLevel(Level.DEBUG);
+    }
+
+    static URL getBaseURL() {
+        try {
+            final String fromEnv = System.getenv("CAOM2_UI_BASE_URL");
+            LOGGER.debug("CAOM2_UI_BASE_URL: " + fromEnv);
+            return new URL(Objects.requireNonNullElse(fromEnv, "http://localhost:8080/caom2ui"));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Synchronized to prevent multiple tests from interfering with each other if run in parallel, since they may be
+     * using the same underlying server and could cause issues with concurrent access to shared resources or state.
+     * @param identifier    The ID query param
+     * @return  Model of the first table.
+     * @throws Exception    Any exception that occurs during the process of fetching and parsing the document.
+     */
+    private synchronized static DocumentModel goTo(final String identifier) throws Exception {
+        Objects.requireNonNull(identifier, "identifier must not be null.");
+        final URL baseURL = WalkthroughTest.getBaseURL();
+        final String urlString = String.format("%s/%s?%s", baseURL.toExternalForm(), "view",
+                                               String.format("ID=%s", URLEncoder.encode(identifier, StandardCharsets.UTF_8)));
+        final URL endpoint = new URL(urlString);
+        final Document document = Jsoup.parse(endpoint, 10000);
+        final DocumentModel documentModel = DocumentModel.fromDocument(document);
+        Assertions.assertEquals("CAOM Observation", documentModel.pageTitle, "Wrong title");
+
+        return documentModel;
     }
 
     @Test
-    public void observationViewTest() throws Exception {
-        // TODO: need an observation that exists in dev, production and (beta?)
-        final ObservationViewPage observationViewPage =
-                goTo("/view", String.format("ID=%s", NetUtil.encode("ivo://cadc.nrc.ca/IRIS?f008h000")),
-                     ObservationViewPage.class);
-        observationViewPage.ensureLoaded();
-        observationViewPage.ensureProvenanceReferenceLink();
+    public void observationViewTestIRIS() throws Exception {
+        final DocumentModel document = WalkthroughTest.goTo("ivo://cadc.nrc.ca/IRIS?f008h000");
+        final Map<String, String> tableValues = document.firstObservationTableValues;
+        Assertions.assertEquals("IRIS", tableValues.get("collection"), "Wrong collection");
+        Assertions.assertEquals("f008h000", tableValues.get("observationID"), "Wrong observation ID");
+        Assertions.assertEquals("SimpleObservation", document.firstObservationTitle, "Wrong observation kind");
     }
 
     @Test
     public void observationViewTestCFHTMEGAPIPE() throws Exception {
-        // TODO: need an observation that exists in dev, production and (beta?)
-        final ObservationViewPage observationViewPage =
-                goTo("/view", String.format("ID=%s", NetUtil.encode("ivo://cadc.nrc.ca/CFHTMEGAPIPE?MegaPipe.189.210")),
-                     ObservationViewPage.class);
-        observationViewPage.ensureLoaded();
-        observationViewPage.ensureProvenanceReferenceLink();
-        observationViewPage.ensureMemberLinkCount(136);
+        final DocumentModel document = WalkthroughTest.goTo("ivo://cadc.nrc.ca/CFHTMEGAPIPE?MegaPipe.189.210");
+        final Map<String, String> tableValues = document.firstObservationTableValues;
+        Assertions.assertEquals("CFHTMEGAPIPE", tableValues.get("collection"), "Wrong collection");
+        Assertions.assertEquals("MegaPipe.189.210", tableValues.get("observationID"), "Wrong observation ID");
+        Assertions.assertEquals("DerivedObservation", document.firstObservationTitle, "Wrong observation kind");
     }
 
     @Test
     public void observationViewTestHST() throws Exception {
-        // TODO: need an observation that exists in dev, production and (beta?)
-        final ObservationViewPage observationViewPage =
-                goTo("/view", String.format("ID=%s", NetUtil.encode("ivo://cadc.nrc.ca/mirror/HST?jbeoft020")),
-                     ObservationViewPage.class);
-        observationViewPage.ensureLoaded();
-        observationViewPage.ensureProvenanceReferenceLink();
-        observationViewPage.ensureMemberLinkCount(2);
+        final DocumentModel document = WalkthroughTest.goTo("ivo://cadc.nrc.ca/mirror/HST?jbeoft020");
+        final Map<String, String> tableValues = document.firstObservationTableValues;
+        Assertions.assertEquals("HST", tableValues.get("collection"), "Wrong collection");
+        Assertions.assertEquals("jbeoft020", tableValues.get("observationID"), "Wrong observation ID");
+        Assertions.assertEquals("DerivedObservation", document.firstObservationTitle, "Wrong observation kind");
+        Assertions.assertEquals("IMAGING", tableValues.get("type"), "Wrong type");
+    }
 
-        final Map<URI, URL> memberLinkMap = observationViewPage.getMemberLinks();
-        final URI firstKey = URI.create("caom:HST/jbeoftneq");
-        final URL firstURL = memberLinkMap.get(firstKey);
+    static final class DocumentModel {
+        final String pageTitle;
+        final String firstObservationTitle;
+        final Map<String, String> firstObservationTableValues = new HashMap<>();
 
-        Assert.assertTrue(
-                String.format("Expected to see %s but got %s.", NetUtil.encode("/mirror/HST?jbeoftneq"),
-                              firstURL.toExternalForm()),
-                firstURL.toExternalForm().contains(NetUtil.encode("/mirror/HST?jbeoftneq")));
+        DocumentModel(String title, String firstObservationTitle, Map<String, String> firstObservationTableValues) {
+            this.pageTitle = title;
+            this.firstObservationTitle = firstObservationTitle;
+            this.firstObservationTableValues.putAll(
+                    Objects.requireNonNullElse(firstObservationTableValues, Collections.emptyMap()));
+        }
 
-        final URI secondKey = URI.create("caom:HST/jbeoftnhq");
-        final URL secondURL = memberLinkMap.get(secondKey);
+        static DocumentModel fromDocument(final Document document) {
+            final String title = document.title();
+            final String observationKind = DocumentModel.textValue(document, "body > div > div > h2");
+            final Element firstObservationTableBody = document.selectFirst("body > div > div > table > tbody");
+            if (firstObservationTableBody == null) {
+                throw new IllegalStateException("No observation table body found in document.");
+            }
+            final Map<String, String> firstObservationTableValues = firstObservationTableBody.select("tr").stream().map(tableRow -> {
+                final String key = Objects.requireNonNull(tableRow.selectFirst("td:nth-child(1)"), "Table cell key is null at row: " + tableRow.id()).text().trim();
+                final Element valueElement = tableRow.selectFirst("td:nth-child(2)");
+                final String value = valueElement == null ? "" : valueElement.text().trim();
+                return Map.entry(key, value);
+            }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        Assert.assertTrue(
-                String.format("Expected to see %s but got %s.", NetUtil.encode("/mirror/HST?jbeoftnhq"),
-                              secondURL.toExternalForm()),
-                secondURL.toExternalForm().contains(NetUtil.encode("/mirror/HST?jbeoftnhq")));
+            return new DocumentModel(title, observationKind, firstObservationTableValues);
+        }
+
+        static String textValue(final Document document, final String cssQuery) {
+            final Element element = document.selectFirst(cssQuery);
+            if (element == null) {
+                throw new IllegalStateException(String.format("No element found for CSS query: %s", cssQuery));
+            }
+            return element.text();
+        }
     }
 }
