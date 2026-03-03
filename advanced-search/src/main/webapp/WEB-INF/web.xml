@@ -76,16 +76,7 @@
                 ca.nrc.cadc.web
             </param-value>
         </init-param>
-        <init-param>
-            <param-name>logAccessGroup</param-name>
-            <param-value>ivo://cadc.nrc.ca/gms?CADC</param-value>
-        </init-param>
-        <init-param>
-            <param-name>groupAuthorizer</param-name>
-            <param-value>ca.nrc.cadc.ac.client.GroupAuthorizer</param-value>
-        </init-param>
         <load-on-startup>1</load-on-startup>
-
     </servlet>
 
     <!--
@@ -142,13 +133,6 @@
         <load-on-startup>4</load-on-startup>
     </servlet>
 
-    <!-- Column Unit handling Servlet -->
-    <servlet>
-        <servlet-name>ColumnUnitServlet</servlet-name>
-        <servlet-class>ca.nrc.cadc.search.ColumnUnitServlet</servlet-class>
-        <load-on-startup>4</load-on-startup>
-    </servlet>
-
     <servlet>
         <servlet-name>PackageServiceServlet</servlet-name>
         <servlet-class>ca.nrc.cadc.search.PackageServlet</servlet-class>
@@ -182,11 +166,6 @@
     <servlet-mapping>
         <servlet-name>DataLinkServlet</servlet-name>
         <url-pattern>/datalink/*</url-pattern>
-    </servlet-mapping>
-
-    <servlet-mapping>
-        <servlet-name>ColumnUnitServlet</servlet-name>
-        <url-pattern>/columnUnit</url-pattern>
     </servlet-mapping>
 
     <servlet-mapping>
