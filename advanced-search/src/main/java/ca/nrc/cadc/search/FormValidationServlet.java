@@ -57,7 +57,7 @@ public class FormValidationServlet extends HttpServlet {
 
     private static final long serialVersionUID = 201310020918L;
 
-    private static Logger LOGGER = Logger.getLogger(FormValidationServlet.class);
+    private static final Logger LOGGER = Logger.getLogger(FormValidationServlet.class);
 
     @Override
     public void init(ServletConfig config) throws ServletException {

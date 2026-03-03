@@ -46,6 +46,8 @@ testing {
                 implementation project()
                 // add any other dependencies, e.g., JUnit Jupiter
                 useJUnitJupiter()
+                implementation 'org.opencadc:cadc-dali:[1.2.29,1.3.0)'
+                implementation 'org.opencadc:cadc-util:[1.12.14,2.0)'
             }
         }
     }
